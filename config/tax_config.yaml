@@ -1,0 +1,127 @@
+# tax_config.yaml
+# Payroll Tax Configuration Settings (2025)
+#
+# This file centralizes tax rates, limits, and filing settings.
+# Update annually when IRS publishes new tax tables and limits.
+
+tax:
+  tax_year: 2025
+
+  # -------------------------------------------------------------------------
+  # FICA Rates (2025)
+  # -------------------------------------------------------------------------
+  fica:
+    social_security:
+      employee_rate: 0.062          # 6.2%
+      employer_rate: 0.062          # 6.2%
+      annual_wage_base: 176100.00   # SS wage base caps at this amount
+
+    medicare:
+      employee_rate: 0.0145         # 1.45%
+      employer_rate: 0.0145         # 1.45%
+      additional_rate: 0.009        # 0.9% additional for wages over threshold
+      additional_threshold: 200000.00  # Annual threshold for Additional Medicare
+
+  # -------------------------------------------------------------------------
+  # Federal Unemployment (FUTA) - 2025
+  # -------------------------------------------------------------------------
+  futa:
+    gross_rate: 0.06              # 6.0% before SUTA credit
+    suta_credit_rate: 0.054       # 5.4% credit for on-time SUTA payment
+    net_rate: 0.006               # 0.6% effective rate
+    wage_base: 7000.00            # Per-employee annual FUTA wage base
+
+  # -------------------------------------------------------------------------
+  # IRS Retirement Contribution Limits (2025)
+  # Source: IRS Notice 2024-80
+  # -------------------------------------------------------------------------
+  retirement_limits:
+    k401_employee_elective: 23500.00    # 401(k)/403(b) elective deferral
+    k401_catchup_age_50_59: 7500.00     # Catch-up age 50-59 and 64+
+    k401_catchup_age_60_63: 11250.00    # SECURE 2.0 super catch-up age 60-63
+    k401_total_annual_addition: 70000.00  # Total including employer (415 limit)
+    simple_ira_employee: 16500.00
+    simple_ira_catchup_50: 3500.00
+    ira_contribution: 7000.00
+    ira_catchup_50: 1000.00
+
+  # -------------------------------------------------------------------------
+  # IRS Benefit Contribution Limits (2025)
+  # -------------------------------------------------------------------------
+  benefit_limits:
+    fsa_health: 3300.00               # Health FSA annual IRS limit
+    fsa_dependent_care: 5000.00       # Dependent care FSA (5000 married/single)
+    fsa_dependent_care_married_separate: 2500.00
+    hsa_single: 4300.00               # HSA HDHP single coverage
+    hsa_family: 8550.00               # HSA HDHP family coverage
+    hsa_catchup_55: 1000.00           # Additional HSA for age 55+
+    transit_monthly: 325.00           # Section 132 transit/vanpool monthly limit
+    parking_monthly: 325.00           # Section 132 parking monthly limit
+    group_life_tax_free: 50000.00     # Group life insurance tax-free threshold
+
+  # -------------------------------------------------------------------------
+  # Federal Standard Withholding Allowances (IRS Pub 15-T Table 1, 2025)
+  # Amount per allowance per pay period
+  # -------------------------------------------------------------------------
+  withholding_allowances:
+    weekly: 100.00
+    biweekly: 200.00
+    semimonthly: 216.67
+    monthly: 433.33
+    quarterly: 1300.00
+    annual: 5200.00
+
+  # -------------------------------------------------------------------------
+  # State Settings
+  # -------------------------------------------------------------------------
+  states:
+    # Default state if none provided
+    default_state: CA
+
+    # States with no income tax (wages not withheld)
+    no_income_tax: [TX, FL, NV, WA, WY, SD, AK, TN, NH]
+
+    # State Disability Insurance (SDI) rates 2025
+    sdi:
+      CA:
+        rate: 0.009        # 0.9% (no wage base cap starting 2024)
+        wage_base: null    # Unlimited
+      NJ:
+        rate: 0.0009
+        wage_base: 161400.00
+      NY:
+        rate: 0.005
+        wage_base: null
+
+  # -------------------------------------------------------------------------
+  # Tax Deposit Schedule Thresholds
+  # -------------------------------------------------------------------------
+  deposit_schedule:
+    # Lookback period: prior 4 quarters (July 1 - June 30)
+    # < $50,000 lookback  => Monthly depositor
+    # >= $50,000 lookback => Semi-weekly depositor
+    monthly_threshold: 50000.00
+    # One-day (next-day) rule: accumulated liability >= $100,000
+    next_day_threshold: 100000.00
+
+  # -------------------------------------------------------------------------
+  # Payroll Tax Penalty Rates (approximate)
+  # -------------------------------------------------------------------------
+  penalties:
+    failure_to_deposit_1_5_days: 0.02       # 2%
+    failure_to_deposit_6_15_days: 0.05      # 5%
+    failure_to_deposit_16_plus_days: 0.10   # 10%
+    failure_to_deposit_after_notice: 0.15   # 15%
+
+  # -------------------------------------------------------------------------
+  # Form Filing Deadlines (calendar month-day)
+  # -------------------------------------------------------------------------
+  filing_deadlines:
+    form_941_q1: "04-30"      # January - March
+    form_941_q2: "07-31"      # April - June
+    form_941_q3: "10-31"      # July - September
+    form_941_q4: "01-31"      # October - December (next year)
+    form_940_annual: "01-31"  # FUTA annual (next year)
+    w2_employee_copy: "01-31" # W-2 to employees
+    w2_ssa_paper: "02-28"     # W-2 paper filing to SSA
+    w2_ssa_electronic: "03-31" # W-2 electronic filing to SSA
