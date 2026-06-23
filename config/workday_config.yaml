@@ -1,0 +1,100 @@
+# workday_config.yaml
+# Workday HCM Environment Configuration
+#
+# Copy this file and fill in your actual credentials.
+# NEVER commit real credentials to version control.
+# Use environment variables or a secrets manager in production.
+#
+# Usage:
+#   cp config/workday_config.yaml.example config/workday_config.yaml
+#   Edit with your actual Workday tenant details.
+
+workday:
+  # -------------------------------------------------------------------------
+  # Tenant & Environment
+  # -------------------------------------------------------------------------
+  # Your Workday tenant name (e.g., "acmecorp" from acmecorp.workday.com)
+  tenant: your-tenant-name
+
+  # Workday base URL for your tenant
+  # Production:    https://wd2-impl-services1.workday.com
+  # Sandbox:       https://wd5-impl-services1.workday.com
+  # Implementation: https://impl.workday.com
+  base_url: https://wd2-impl-services1.workday.com
+
+  # API version (check your Workday release notes)
+  api_version: v1
+
+  # Environment type: production | sandbox | implementation
+  environment: sandbox
+
+  # -------------------------------------------------------------------------
+  # OAuth2 / API Credentials
+  # -------------------------------------------------------------------------
+  # Workday OAuth2 client credentials (from Workday > System > OAuth2 Clients)
+  # IMPORTANT: Use environment variables in production:
+  #   WORKDAY_CLIENT_ID and WORKDAY_CLIENT_SECRET
+  client_id: ${WORKDAY_CLIENT_ID}
+  client_secret: ${WORKDAY_CLIENT_SECRET}
+
+  # OAuth2 token endpoint (auto-generated from tenant if left empty)
+  # token_url: https://your-tenant.workday.com/ccx/oauth2/your-tenant/token
+  token_url: ""
+
+  # -------------------------------------------------------------------------
+  # Connection Settings
+  # -------------------------------------------------------------------------
+  # HTTP request timeout in seconds
+  timeout: 30
+
+  # Max retry attempts for failed API calls
+  max_retries: 3
+
+  # Retry backoff factor (seconds between retries: factor * 2^attempt)
+  retry_backoff_factor: 0.5
+
+  # -------------------------------------------------------------------------
+  # Payroll Settings
+  # -------------------------------------------------------------------------
+  payroll:
+    # Default pay group identifier
+    default_pay_group: BIWEEKLY-US
+
+    # Number of worker records to fetch per page
+    page_size: 100
+
+    # Workday Payroll module API path
+    payroll_api_path: /ccx/api/payroll/v1
+
+    # Human Capital Management API path
+    hcm_api_path: /ccx/api/hcm/v2
+
+  # -------------------------------------------------------------------------
+  # Employer Information (for tax filings)
+  # -------------------------------------------------------------------------
+  employer:
+    name: Your Company Name
+    ein: "00-0000000"          # Employer Identification Number
+    address_line1: 123 Main St
+    city: San Francisco
+    state: CA
+    zip: "94102"
+    phone: "415-555-0100"
+
+  # -------------------------------------------------------------------------
+  # Direct Deposit / ACH Settings
+  # -------------------------------------------------------------------------
+  ach:
+    company_name: YOUR COMPANY
+    company_id: "1234567890"   # 10-digit ACH company ID
+    bank_routing: "021000021"  # Your bank routing number
+    # File format: NACHA | CSV
+    file_format: NACHA
+
+  # -------------------------------------------------------------------------
+  # Logging
+  # -------------------------------------------------------------------------
+  logging:
+    level: INFO              # DEBUG | INFO | WARNING | ERROR
+    log_api_requests: false  # Set true for debugging (logs credentials!)
+    log_file: logs/workday_payroll.log
