@@ -1,7 +1,6 @@
 """
 retirement_deduction.py
 Retirement Plan Deduction Calculator.
-
 Handles 401(k), 403(b), Roth 401(k), employer matching, catch-up
 contributions, and other retirement-related payroll deductions.
 Enforces 2025 IRS contribution limits.
@@ -13,52 +12,48 @@ from typing import Dict, List, Optional
 
 TWO_PLACES = Decimal("0.01")
 
-
 def _round(v: Decimal) -> Decimal:
     return v.quantize(TWO_PLACES, rounding=ROUND_HALF_UP)
-
 
 # ---------------------------------------------------------------------------
 # 2025 IRS Retirement Contribution Limits
 # ---------------------------------------------------------------------------
 IRS_RETIREMENT_LIMITS_2025 = {
-    "401K_EMPLOYEE":        Decimal("23500"),   # 401(k) / 403(b) employee elective
-    "401K_CATCHUP_50":      Decimal("7500"),    # Catch-up for age 50-59 and 64+
-    "401K_CATCHUP_60_63":   Decimal("11250"),   # SECURE 2.0 super catch-up age 60-63
-    "401K_TOTAL":           Decimal("70000"),   # Combined employee + employer annual max
-    "IRA_EMPLOYEE":         Decimal("7000"),    # Traditional / Roth IRA
-    "IRA_CATCHUP":          Decimal("1000"),    # IRA catch-up age 50+
-    "SIMPLE_EMPLOYEE":      Decimal("16500"),   # SIMPLE IRA employee
-    "SIMPLE_CATCHUP":       Decimal("3500"),    # SIMPLE IRA catch-up age 50+
+    "401K_EMPLOYEE":     Decimal("23500"),   # 401(k) / 403(b) employee elective
+    "401K_CATCHUP_50":   Decimal("7500"),    # Catch-up for age 50-59 and 64+
+    "401K_CATCHUP_60_63": Decimal("11250"),  # SECURE 2.0 super catch-up age 60-63
+    "401K_TOTAL":        Decimal("70000"),   # Combined employee + employer annual max
+    "IRA_EMPLOYEE":      Decimal("7000"),    # Traditional / Roth IRA
+    "IRA_CATCHUP":       Decimal("1000"),    # IRA catch-up age 50+
+    "SIMPLE_EMPLOYEE":   Decimal("16500"),   # SIMPLE IRA employee
+    "SIMPLE_CATCHUP":    Decimal("3500"),    # SIMPLE IRA catch-up age 50+
 }
 
 # Retirement plan types and their pre-tax status
 PLAN_TAX_TREATMENT = {
-    "401K":           {"pretax": True,  "roth": False, "limit_key": "401K_EMPLOYEE"},
-    "ROTH_401K":      {"pretax": False, "roth": True,  "limit_key": "401K_EMPLOYEE"},
-    "403B":           {"pretax": True,  "roth": False, "limit_key": "401K_EMPLOYEE"},
-    "ROTH_403B":      {"pretax": False, "roth": True,  "limit_key": "401K_EMPLOYEE"},
-    "457B":           {"pretax": True,  "roth": False, "limit_key": "401K_EMPLOYEE"},
-    "SIMPLE_IRA":     {"pretax": True,  "roth": False, "limit_key": "SIMPLE_EMPLOYEE"},
-    "TRADITIONAL_IRA":{"pretax": True,  "roth": False, "limit_key": "IRA_EMPLOYEE"},
-    "ROTH_IRA":       {"pretax": False, "roth": True,  "limit_key": "IRA_EMPLOYEE"},
+    "401K":          {"pretax": True,  "roth": False, "limit_key": "401K_EMPLOYEE"},
+    "ROTH_401K":     {"pretax": False, "roth": True,  "limit_key": "401K_EMPLOYEE"},
+    "403B":          {"pretax": True,  "roth": False, "limit_key": "401K_EMPLOYEE"},
+    "ROTH_403B":     {"pretax": False, "roth": True,  "limit_key": "401K_EMPLOYEE"},
+    "457B":          {"pretax": True,  "roth": False, "limit_key": "401K_EMPLOYEE"},
+    "SIMPLE_IRA":    {"pretax": True,  "roth": False, "limit_key": "SIMPLE_EMPLOYEE"},
+    "TRADITIONAL_IRA":{"pretax": True, "roth": False, "limit_key": "IRA_EMPLOYEE"},
+    "ROTH_IRA":      {"pretax": False, "roth": True,  "limit_key": "IRA_EMPLOYEE"},
 }
-
 
 @dataclass
 class RetirementElection:
     """A single retirement plan election."""
-    plan_type: str              # e.g. "401K", "ROTH_401K"
+    plan_type: str
     plan_name: str
-    election_type: str          # PERCENTAGE | FLAT_AMOUNT
+    election_type: str          # PERCENTAGE | FLAT_AMOUNT | FIXED
     election_value: Decimal     # Percent (e.g. 0.06 for 6%) or flat amount
     employee_age: int           # For catch-up contribution eligibility
     ytd_employee: Decimal = Decimal("0")
     ytd_employer: Decimal = Decimal("0")
-    employer_match_percent: Decimal = Decimal("0")   # e.g. 0.50 for 50% match
-    employer_match_cap: Decimal = Decimal("0")        # % of comp (e.g. 0.06 for up to 6%)
-    vesting_percent: Decimal = Decimal("1.0")         # 1.0 = 100% vested
-
+    employer_match_percent: Decimal = Decimal("0")
+    employer_match_cap: Decimal = Decimal("0")
+    vesting_percent: Decimal = Decimal("1.0")
 
 @dataclass
 class RetirementDeductionResult:
@@ -72,21 +67,11 @@ class RetirementDeductionResult:
     warnings: List[str] = field(default_factory=list)
     limit_hits: List[str] = field(default_factory=list)
 
-
 class RetirementDeductionCalculator:
     """
     Retirement Plan Deduction Calculator (2025 IRS limits).
-
-    Supports:
-    - 401(k), 403(b), 457(b), SIMPLE IRA, Traditional/Roth IRA
-    - Both percentage-of-gross and flat-amount elections
-    - Catch-up contributions (age 50+ and SECURE 2.0 age 60-63)
-    - Employer matching with caps
-    - Combined limit enforcement ($70,000 total 2025)
-
-    Usage:
-        calc = RetirementDeductionCalculator()
-        result = calc.calculate(retirement_elections, gross_pay)
+    Supports percentage-of-gross and flat/fixed-amount elections,
+    catch-up contributions, employer matching, and combined limits.
     """
 
     def calculate(
@@ -98,10 +83,13 @@ class RetirementDeductionCalculator:
         Calculate retirement deductions for a pay period.
 
         Args:
-            elections: List of retirement election dicts from Workday.
-                       Keys: planType, planName, electionType, electionValue,
-                             employeeAge, ytdEmployee, ytdEmployer,
-                             employerMatchPercent, employerMatchCap, vestingPercent
+            elections: List of retirement election dicts.
+                       Accepted keys:
+                         planType, planName,
+                         electionType (PERCENTAGE | FIXED | FLAT_AMOUNT),
+                         electionValue OR electionAmount (numeric),
+                         employeeAge, ytdEmployee, ytdEmployer,
+                         employerMatchPercent, employerMatchCap, vestingPercent
             gross_pay: Gross pay before any deductions for this period.
 
         Returns:
@@ -113,7 +101,11 @@ class RetirementDeductionCalculator:
             plan_type = election.get("planType", "401K").upper()
             plan_name = election.get("planName", plan_type)
             election_type = election.get("electionType", "PERCENTAGE").upper()
-            election_value = Decimal(str(election.get("electionValue", 0)))
+            # Accept both "electionValue" (original) and "electionAmount" (test/Workday variant)
+            raw_value = election.get("electionValue")
+            if raw_value is None:
+                raw_value = election.get("electionAmount", 0)
+            election_value = Decimal(str(raw_value))
             employee_age = int(election.get("employeeAge", 30))
             ytd_employee = Decimal(str(election.get("ytdEmployee", 0)))
             ytd_employer = Decimal(str(election.get("ytdEmployer", 0)))
@@ -124,7 +116,7 @@ class RetirementDeductionCalculator:
             # Calculate raw employee contribution for the period
             if election_type == "PERCENTAGE":
                 employee_contrib = _round(gross_pay * election_value)
-            else:
+            else:  # FIXED or FLAT_AMOUNT
                 employee_contrib = _round(election_value)
 
             # Get the annual limit for this plan type
@@ -153,7 +145,6 @@ class RetirementDeductionCalculator:
                     eligible_pct = min(election_value, match_cap) if match_cap > 0 else election_value
                     employer_contrib = _round(gross_pay * eligible_pct * match_pct * vesting)
                 else:
-                    # Flat amount match
                     employer_contrib = _round(employee_contrib * match_pct * vesting)
 
                 # Cap employer match at remaining combined limit
@@ -205,36 +196,3 @@ class RetirementDeductionCalculator:
             if age >= 50:
                 return IRS_RETIREMENT_LIMITS_2025["IRA_CATCHUP"]
         return Decimal("0")
-
-    def project_annual_contribution(
-        self,
-        gross_pay_per_period: Decimal,
-        election_value: Decimal,
-        election_type: str,
-        periods_remaining: int,
-        plan_type: str = "401K",
-        employee_age: int = 40,
-    ) -> Dict:
-        """
-        Project total annual contribution and whether limit will be hit.
-        Useful for generating employee-facing payroll summaries.
-        """
-        if election_type.upper() == "PERCENTAGE":
-            per_period = _round(gross_pay_per_period * election_value)
-        else:
-            per_period = _round(election_value)
-
-        projected_total = _round(per_period * Decimal(str(periods_remaining)))
-        plan_info = PLAN_TAX_TREATMENT.get(plan_type.upper(), PLAN_TAX_TREATMENT["401K"])
-        limit_key = plan_info["limit_key"]
-        base_limit = IRS_RETIREMENT_LIMITS_2025.get(limit_key, Decimal("23500"))
-        catch_up = self._get_catchup_limit(plan_type, employee_age)
-        annual_limit = base_limit + catch_up
-
-        return {
-            "perPeriodContribution": per_period,
-            "projectedAnnualTotal": projected_total,
-            "annualLimit": annual_limit,
-            "willHitLimit": projected_total > annual_limit,
-            "periodsUntilLimit": int(annual_limit / per_period) if per_period > 0 else None,
-        }
